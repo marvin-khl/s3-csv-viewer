@@ -1,25 +1,30 @@
 import { execFile, spawn } from "child_process";
 import * as fss from "fs";
-import * as fs from "fs/promises";
 import * as os from "os";
 import * as path from "path";
 import * as vscode from "vscode";
 
 /**
- * Runs the AWS CLI with given arguments and optional environment variables.
- * Returns the stdout as a Buffer.
+ * Returns the AWS CLI command name depending on the platform
+ * (Windows uses `aws.exe`, others use `aws`).
+ */
+function awsCmdName() {
+  return process.platform === "win32" ? "aws.exe" : "aws";
+}
+
+/**
+ * Runs the AWS CLI with given arguments and environment variables.
+ * Returns stdout as a Buffer or throws an error with stderr.
  */
 function runAwsCli(
   args: string[],
   envExtras: Record<string, string> = {}
 ): Promise<Buffer> {
   return new Promise((resolve, reject) => {
-    const child = execFile(
-      process.platform === "win32" ? "aws.exe" : "aws",
+    execFile(
+      awsCmdName(),
       args,
-      {
-        env: { ...process.env, ...envExtras },
-      },
+      { env: { ...process.env, ...envExtras } },
       (error, stdout, stderr) => {
         if (error) {
           reject(
@@ -34,53 +39,15 @@ function runAwsCli(
 }
 
 /**
- * Downloads a CSV file from S3 to a temporary file using AWS CLI.
- * Returns the local path to the downloaded file.
+ * Downloads a file from S3 to a local path using `aws s3 cp`.
+ * Pipes file content to a local write stream.
  */
-async function fetchCsvToTemp(
-  s3Uri: string,
-  profile?: string,
-  region?: string
-): Promise<string> {
-  if (!s3Uri || !s3Uri.startsWith("s3://")) {
-    throw new Error(
-      "Please provide a valid S3 URI (e.g., s3://bucket/key.csv)."
-    );
-  }
-
-  const envExtras: Record<string, string> = {};
-  if (profile) {
-    envExtras.AWS_PROFILE = profile;
-  }
-  if (region) {
-    envExtras.AWS_REGION = region;
-  }
-
-  const fileName = path.basename(s3Uri) || "s3.csv";
-  const tmpPath = path.join(
-    os.tmpdir(),
-    `s3-csv-viewer-${Date.now()}-${fileName}`
-  );
-
-  try {
-    await awsS3CpToFile(s3Uri, tmpPath, envExtras);
-    return tmpPath;
-  } catch (e) {
-    // Partielle Datei bei Fehler entfernen (Cleanup)
-    try {
-      await fs.unlink(tmpPath);
-    } catch {}
-    throw e;
-  }
-}
-
 async function awsS3CpToFile(
   s3Uri: string,
   destPath: string,
   envExtras: Record<string, string> = {}
 ): Promise<void> {
   return new Promise((resolve, reject) => {
-    const awsCmd = process.platform === "win32" ? "aws.exe" : "aws";
     const args = [
       "s3",
       "cp",
@@ -89,8 +56,7 @@ async function awsS3CpToFile(
       "--no-progress",
       "--only-show-errors",
     ];
-
-    const child = spawn(awsCmd, args, {
+    const child = spawn(awsCmdName(), args, {
       env: { ...process.env, ...envExtras },
       stdio: ["ignore", "pipe", "pipe"],
     });
@@ -107,7 +73,6 @@ async function awsS3CpToFile(
     });
     child.on("error", (err) => reject(err));
     child.on("close", (code) => {
-      // Stream schließen, dann auf Exitcode prüfen
       out.close(() => {
         if (code === 0) {
           resolve();
@@ -122,81 +87,102 @@ async function awsS3CpToFile(
 }
 
 /**
- * Main command: Prompts for or uses configured S3 URI,
- * downloads CSV, and opens it in VS Code.
+ * Downloads a selected S3 file and opens it in the VS Code editor.
+ * The file is stored in a temporary directory.
  */
-async function openCsvFromS3(
-  context: vscode.ExtensionContext,
-  uriFromInput?: string
+async function openS3FileInEditor(
+  s3Uri: string,
+  profile?: string,
+  region?: string
 ) {
+  const envExtras: Record<string, string> = {};
+  if (profile) {
+    envExtras.AWS_PROFILE = profile;
+  }
+  if (region) {
+    envExtras.AWS_REGION = region;
+  }
+
+  const fileName = path.basename(s3Uri);
+  const tmpPath = path.join(os.tmpdir(), `s3-viewer-${Date.now()}-${fileName}`);
+
+  await awsS3CpToFile(s3Uri, tmpPath, envExtras);
+
+  const doc = await vscode.workspace.openTextDocument(vscode.Uri.file(tmpPath));
+  await vscode.window.showTextDocument(doc, { preview: false });
+  vscode.window.setStatusBarMessage(`S3 File loaded: ${s3Uri}`, 5000);
+}
+
+/**
+ * Displays QuickPick dropdowns to:
+ * 1. Select a bucket
+ * 2. Select a file within that bucket
+ * Then opens the selected file in the editor.
+ */
+async function pickAndOpenS3File(context: vscode.ExtensionContext) {
   const cfg = vscode.workspace.getConfiguration("s3CsvViewer");
-  const configuredUri = cfg.get<string>("s3Uri")?.trim() || "";
-  const profile = cfg.get<string>("awsProfile")?.trim() || "";
-  const region = cfg.get<string>("awsRegion")?.trim() || "";
-
-  const s3Uri =
-    uriFromInput ||
-    configuredUri ||
-    (await vscode.window.showInputBox({
-      placeHolder: "s3://bucket/key.csv",
-      prompt: "S3 URI of the CSV file",
-      ignoreFocusOut: true,
-      validateInput: (val) =>
-        val.startsWith("s3://") ? undefined : "Must start with s3://",
-    }));
-
-  if (!s3Uri) {
-    return;
+  const env: Record<string, string> = {};
+  const profile = cfg.get<string>("awsProfile")?.trim();
+  const region = cfg.get<string>("awsRegion")?.trim();
+  if (profile) {
+    env.AWS_PROFILE = profile;
+  }
+  if (region) {
+    env.AWS_REGION = region;
   }
 
   try {
-    const tmpPath = await fetchCsvToTemp(s3Uri, profile, region);
-
-    // Open CSV as a text document; VS Code usually detects .csv automatically
-    const doc = await vscode.workspace.openTextDocument(
-      vscode.Uri.file(tmpPath)
+    // Fetch buckets
+    const rawBuckets = await runAwsCli(
+      ["s3api", "list-buckets", "--output", "json"],
+      env
     );
-    await vscode.window.showTextDocument(doc, { preview: false });
+    const dataBuckets = JSON.parse(rawBuckets.toString());
+    const buckets: string[] = dataBuckets.Buckets.map((b: any) => b.Name);
 
-    // Force CSV language mode if not detected
-    if (doc.languageId !== "csv") {
-      await vscode.languages.setTextDocumentLanguage(doc, "csv");
+    const bucket = await vscode.window.showQuickPick(buckets, {
+      placeHolder: "Select an S3 bucket",
+    });
+    if (!bucket) {
+      return;
     }
 
-    vscode.window.setStatusBarMessage(`S3 CSV loaded: ${s3Uri}`, 5000);
-  } catch (err: any) {
-    vscode.window.showErrorMessage(
-      `Failed to load CSV. ${err?.message ?? String(err)}`
+    // Fetch objects in the selected bucket
+    const rawObjs = await runAwsCli(
+      ["s3api", "list-objects-v2", "--bucket", bucket, "--output", "json"],
+      env
     );
+    const dataObjs = JSON.parse(rawObjs.toString());
+    const keys: string[] = (dataObjs.Contents || []).map((o: any) => o.Key);
+
+    const key = await vscode.window.showQuickPick(keys, {
+      placeHolder: `Select file from ${bucket}`,
+    });
+    if (!key) {
+      return;
+    }
+
+    const s3Uri = `s3://${bucket}/${key}`;
+    await openS3FileInEditor(s3Uri, profile, region);
+  } catch (err: any) {
+    vscode.window.showErrorMessage(`Error: ${err?.message}`);
   }
 }
 
 /**
- * Extension activation entry point.
- * Registers commands and auto-opens the CSV if configured.
+ * Called when the extension is activated.
+ * Registers the main command to pick and open S3 files.
  */
 export function activate(context: vscode.ExtensionContext) {
   const disposable = vscode.commands.registerCommand(
     "s3CsvViewer.openCsvFromS3",
-    async () => openCsvFromS3(context)
+    async () => pickAndOpenS3File(context)
   );
-
   context.subscriptions.push(disposable);
-
-  // Auto-open on startup if enabled
-  const cfg = vscode.workspace.getConfiguration("s3CsvViewer");
-  const auto = cfg.get<boolean>("autoOpenOnStartup");
-
-  if (auto) {
-    // Don't block startup; ignore errors
-    openCsvFromS3(context).catch(() => {});
-  }
 }
 
 /**
- * Extension deactivation hook.
- * Nothing to clean up in this extension.
+ * Called when the extension is deactivated.
+ * Currently no cleanup is required.
  */
-export function deactivate() {
-  // Nothing to clean up
-}
+export function deactivate() {}

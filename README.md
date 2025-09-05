@@ -34,16 +34,3 @@ This extension contributes the following settings:
 1. Configure settings or run the command from the Command Palette.
 2. Enter the S3 URI when prompted.
 3. The CSV opens in a new editor tab.
-
-## Local installation (without Marketplace)
-
-You can use the extension locally or share it with others as a `.vsix` file—no publishing required.
-
-### Option A — Install the built VSIX
-
-1. Build and package:
-   ```bash
-   npm install
-   npm run compile
-   npx vsce package
-   ```

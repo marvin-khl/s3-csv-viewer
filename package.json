@@ -1,35 +1,40 @@
 {
-  "name": "s3-csv-viewer",
-  "displayName": "S3 CSV Viewer",
-  "description": "Opens a CSV file from an S3 bucket using AWS CLI v2.",
-  "version": "0.0.1",
-  "publisher": "your-publisher-id",
-  "icon": "images/icon.jpeg",
+  "name": "s3-file-viewer",
+  "displayName": "AWS S3 File Viewer",
+  "description": "Browse and open files directly from Amazon S3 buckets in VS Code using the AWS CLI v2.",
+  "version": "1.0.0",
+  "publisher": "marvin-kuehlmann",
+  "icon": "images/icon.png",
   "galleryBanner": {
     "color": "#0f172a",
     "theme": "dark"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/marvin-khl/s3-csv-viewer"
+    "url": "https://github.com/marvin-khl/s3-viewer"
   },
   "bugs": {
-    "url": "https://github.com/marvin-khl/s3-csv-viewer/issues"
+    "url": "https://github.com/marvin-khl/s3-viewer/issues"
   },
-  "homepage": "https://github.com/marvin-khl/s3-csv-viewer",
+  "homepage": "https://github.com/marvin-khl/s3-viewer#readme",
   "license": "MIT",
   "engines": {
     "vscode": "^1.103.0"
   },
   "categories": [
+    "Data Science",
     "Other"
   ],
   "keywords": [
     "AWS",
-    "S3",
-    "CSV",
+    "Amazon S3",
+    "Cloud Storage",
     "CLI",
-    "Data"
+    "Data",
+    "CSV",
+    "Text",
+    "DevOps",
+    "Infrastructure"
   ],
   "activationEvents": [
     "onCommand:s3CsvViewer.openCsvFromS3",
@@ -40,32 +45,31 @@
     "commands": [
       {
         "command": "s3CsvViewer.openCsvFromS3",
-        "title": "S3: Open CSV from Bucket"
+        "title": "S3: Open Files from Bucket with AWS CLI"
       }
     ],
     "configuration": {
-      "type": "object",
       "title": "S3 CSV Viewer",
       "properties": {
-        "s3CsvViewer.s3Uri": {
-          "type": "string",
-          "default": "",
-          "description": "S3 URI of the CSV file (e.g. s3://my-bucket/path/file.csv)."
-        },
         "s3CsvViewer.awsProfile": {
           "type": "string",
           "default": "",
-          "description": "Optional AWS CLI profile (e.g. 'default' or 'dev')."
+          "description": "AWS profile to use (exports AWS_PROFILE)."
         },
         "s3CsvViewer.awsRegion": {
           "type": "string",
           "default": "",
-          "description": "Optional AWS region for the CLI call (e.g. eu-central-1)."
+          "description": "AWS region to use (exports AWS_REGION)."
+        },
+        "s3CsvViewer.s3Uri": {
+          "type": "string",
+          "default": "",
+          "description": "Default S3 URI seed when opening."
         },
         "s3CsvViewer.autoOpenOnStartup": {
           "type": "boolean",
           "default": false,
-          "description": "Automatically open the configured CSV file on VS Code startup."
+          "description": "Auto-open on startup."
         }
       }
     }

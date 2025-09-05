@@ -1,4 +1,5 @@
-import { execFile } from "child_process";
+import { execFile, spawn } from "child_process";
+import * as fss from "fs";
 import * as fs from "fs/promises";
 import * as os from "os";
 import * as path from "path";
@@ -55,19 +56,69 @@ async function fetchCsvToTemp(
     envExtras.AWS_REGION = region;
   }
 
-  // Use AWS CLI to copy file to stdout: aws s3 cp s3://bucket/key.csv -
-  const args = ["s3", "cp", s3Uri, "-"];
-  const data = await runAwsCli(args, envExtras);
-
   const fileName = path.basename(s3Uri) || "s3.csv";
   const tmpPath = path.join(
     os.tmpdir(),
     `s3-csv-viewer-${Date.now()}-${fileName}`
   );
 
-  await fs.writeFile(tmpPath, data);
+  try {
+    await awsS3CpToFile(s3Uri, tmpPath, envExtras);
+    return tmpPath;
+  } catch (e) {
+    // Partielle Datei bei Fehler entfernen (Cleanup)
+    try {
+      await fs.unlink(tmpPath);
+    } catch {}
+    throw e;
+  }
+}
 
-  return tmpPath;
+async function awsS3CpToFile(
+  s3Uri: string,
+  destPath: string,
+  envExtras: Record<string, string> = {}
+): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const awsCmd = process.platform === "win32" ? "aws.exe" : "aws";
+    const args = [
+      "s3",
+      "cp",
+      s3Uri,
+      "-",
+      "--no-progress",
+      "--only-show-errors",
+    ];
+
+    const child = spawn(awsCmd, args, {
+      env: { ...process.env, ...envExtras },
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+
+    const out = fss.createWriteStream(destPath);
+    let stderrBuf = "";
+
+    child.stdout.pipe(out);
+
+    child.stderr.on("data", (d) => (stderrBuf += d.toString()));
+    out.on("error", (err) => {
+      child.kill("SIGKILL");
+      reject(err);
+    });
+    child.on("error", (err) => reject(err));
+    child.on("close", (code) => {
+      // Stream schließen, dann auf Exitcode prüfen
+      out.close(() => {
+        if (code === 0) {
+          resolve();
+        } else {
+          reject(
+            new Error(`AWS CLI exited with code ${code}: ${stderrBuf.trim()}`)
+          );
+        }
+      });
+    });
+  });
 }
 
 /**

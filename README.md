@@ -35,12 +35,15 @@ This extension contributes the following settings:
 2. Enter the S3 URI when prompted.
 3. The CSV opens in a new editor tab.
 
-## Troubleshooting
+## Local installation (without Marketplace)
 
-- **`aws: command not found`**: Ensure AWS CLI v2 is installed and available to VS Code’s environment.
-- **Access denied**: Your credentials lack `s3:GetObject` on the object. Check IAM policies/roles/profiles.
-- **Wrong region**: Set `s3CsvViewer.awsRegion` or use a profile with the correct region.
+You can use the extension locally or share it with others as a `.vsix` file—no publishing required.
 
-## License
+### Option A — Install the built VSIX
 
-MIT
+1. Build and package:
+   ```bash
+   npm install
+   npm run compile
+   npx vsce package
+   ```

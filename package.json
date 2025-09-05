@@ -1,0 +1,70 @@
+{
+  "name": "s3-csv-viewer",
+  "displayName": "S3 CSV Viewer",
+  "description": "Opens a CSV file from an S3 bucket using AWS CLI v2.",
+  "version": "0.0.1",
+  "engines": {
+    "vscode": "^1.103.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onCommand:s3CsvViewer.openCsvFromS3",
+    "onStartupFinished"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "s3CsvViewer.openCsvFromS3",
+        "title": "S3: Open CSV from Bucket"
+      }
+    ],
+    "configuration": {
+      "type": "object",
+      "title": "S3 CSV Viewer",
+      "properties": {
+        "s3CsvViewer.s3Uri": {
+          "type": "string",
+          "default": "",
+          "description": "S3 URI of the CSV file (e.g. s3://my-bucket/path/file.csv)."
+        },
+        "s3CsvViewer.awsProfile": {
+          "type": "string",
+          "default": "",
+          "description": "Optional AWS CLI profile (e.g. 'default' or 'dev')."
+        },
+        "s3CsvViewer.awsRegion": {
+          "type": "string",
+          "default": "",
+          "description": "Optional AWS region for the CLI call (e.g. eu-central-1)."
+        },
+        "s3CsvViewer.autoOpenOnStartup": {
+          "type": "boolean",
+          "default": false,
+          "description": "Automatically open the configured CSV file on VS Code startup."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile && npm run lint",
+    "lint": "eslint src",
+    "test": "vscode-test"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.103.0",
+    "@types/mocha": "^10.0.10",
+    "@types/node": "22.x",
+    "@typescript-eslint/eslint-plugin": "^8.42.0",
+    "@typescript-eslint/parser": "^8.42.0",
+    "eslint": "^9.34.0",
+    "typescript": "^5.9.2",
+    "@vscode/test-cli": "^0.0.11",
+    "@vscode/test-electron": "^2.5.2"
+  }
+}

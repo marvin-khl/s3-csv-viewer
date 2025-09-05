@@ -3,11 +3,33 @@
   "displayName": "S3 CSV Viewer",
   "description": "Opens a CSV file from an S3 bucket using AWS CLI v2.",
   "version": "0.0.1",
+  "publisher": "your-publisher-id",
+  "icon": "images/icon.jpeg",
+  "galleryBanner": {
+    "color": "#0f172a",
+    "theme": "dark"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/marvin-khl/s3-csv-viewer"
+  },
+  "bugs": {
+    "url": "https://github.com/marvin-khl/s3-csv-viewer/issues"
+  },
+  "homepage": "https://github.com/marvin-khl/s3-csv-viewer",
+  "license": "MIT",
   "engines": {
     "vscode": "^1.103.0"
   },
   "categories": [
     "Other"
+  ],
+  "keywords": [
+    "AWS",
+    "S3",
+    "CSV",
+    "CLI",
+    "Data"
   ],
   "activationEvents": [
     "onCommand:s3CsvViewer.openCsvFromS3",

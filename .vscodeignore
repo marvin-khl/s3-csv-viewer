@@ -1,11 +1,20 @@
-.vscode/**
-.vscode-test/**
-src/**
+# Git & CI
+.git/
+.github/
 .gitignore
-.yarnrc
-vsc-extension-quickstart.md
-**/tsconfig.json
-**/eslint.config.mjs
-**/*.map
-**/*.ts
-**/.vscode-test.*
+
+# Build outputs
+out/test/
+coverage/
+*.map
+
+# Sources/tests not needed at runtime
+src/test/
+test/
+.vscode/
+
+# Misc
+node_modules/**/node_modules
+tsconfig.json
+jest.config.* 
+*.log

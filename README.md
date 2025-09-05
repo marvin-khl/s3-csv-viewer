@@ -1,71 +1,46 @@
-# s3-csv-viewer README
+# S3 CSV Viewer
 
-This is the README for your extension "s3-csv-viewer". After writing up a brief description, we recommend including the following sections.
+Opens a CSV file from an Amazon S3 bucket using **AWS CLI v2** and displays it in VS Code.
 
 ## Features
 
-Describe specific features of your extension including screenshots of your extension in action. Image paths are relative to this README file.
-
-For example if there is an image subfolder under your extension project workspace:
-
-\!\[feature X\]\(images/feature-x.png\)
-
-> Tip: Many popular extensions utilize animations. This is an excellent way to show off your extension! We recommend short, focused animations that are easy to follow.
+- Download an S3 object via `aws s3 cp s3://... -`
+- Opens the CSV in a new editor tab
+- Optional auto-open on startup
 
 ## Requirements
 
-If you have any requirements or dependencies, add a section describing those and how to install and configure them.
+- **AWS CLI v2** installed and on your PATH
+- Valid AWS credentials (profile, SSO, role, or environment)
+- Permission `s3:GetObject` on the target object
 
 ## Extension Settings
 
-Include if your extension adds any VS Code settings through the `contributes.configuration` extension point.
-
-For example:
-
 This extension contributes the following settings:
 
-* `myExtension.enable`: Enable/disable this extension.
-* `myExtension.thing`: Set to `blah` to do something.
+| Setting                         | Type    | Description                                 |
+| ------------------------------- | ------- | ------------------------------------------- |
+| `s3CsvViewer.s3Uri`             | string  | S3 URI, e.g. `s3://my-bucket/path/file.csv` |
+| `s3CsvViewer.awsProfile`        | string  | Optional AWS profile, e.g. `default`, `dev` |
+| `s3CsvViewer.awsRegion`         | string  | Optional region, e.g. `eu-central-1`        |
+| `s3CsvViewer.autoOpenOnStartup` | boolean | Open on VS Code startup                     |
 
-## Known Issues
+## Commands
 
-Calling out known issues can help limit users opening duplicate issues against your extension.
+- **S3: Open CSV from Bucket** (`s3CsvViewer.openCsvFromS3`)
 
-## Release Notes
+## Usage
 
-Users appreciate release notes as you update your extension.
+1. Configure settings or run the command from the Command Palette.
+2. Enter the S3 URI when prompted.
+3. The CSV opens in a new editor tab.
 
-### 1.0.0
+## Troubleshooting
 
-Initial release of ...
+- **`aws: command not found`**: Ensure AWS CLI v2 is installed and available to VS Code’s environment.
+- **Access denied**: Your credentials lack `s3:GetObject` on the object. Check IAM policies/roles/profiles.
+- **Wrong region**: Set `s3CsvViewer.awsRegion` or use a profile with the correct region.
 
-### 1.0.1
+## License
 
-Fixed issue #.
-
-### 1.1.0
-
-Added features X, Y, and Z.
-
----
-
-## Following extension guidelines
-
-Ensure that you've read through the extensions guidelines and follow the best practices for creating your extension.
-
-* [Extension Guidelines](https://code.visualstudio.com/api/references/extension-guidelines)
-
-## Working with Markdown
-
-You can author your README using Visual Studio Code. Here are some useful editor keyboard shortcuts:
-
-* Split the editor (`Cmd+\` on macOS or `Ctrl+\` on Windows and Linux).
-* Toggle preview (`Shift+Cmd+V` on macOS or `Shift+Ctrl+V` on Windows and Linux).
-* Press `Ctrl+Space` (Windows, Linux, macOS) to see a list of Markdown snippets.
-
-## For more information
-
-* [Visual Studio Code's Markdown Support](http://code.visualstudio.com/docs/languages/markdown)
-* [Markdown Syntax Reference](https://help.github.com/articles/markdown-basics/)
-
-**Enjoy!**
+MIT
